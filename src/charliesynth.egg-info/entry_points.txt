@@ -1,0 +1,2 @@
+[console_scripts]
+charliesynth = charliesynth.interface.cli:main

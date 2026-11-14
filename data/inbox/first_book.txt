@@ -1,0 +1,16 @@
+CHARLIESYNTH TEST DOCUMENT
+
+Chapter 1: The Beginning
+
+Knowledge is built through observation, evidence, and verification.
+
+An intelligent system should distinguish between information
+it has actually observed and information it cannot verify.
+
+When evidence is missing, the correct response is to acknowledge
+uncertainty rather than invent an answer.
+
+Chapter 2: Memory
+
+Persistent memory allows information to survive beyond a single
+conversation. Each stored passage should retain its source identity.

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "charliesynth"
+version = "0.1.0"
+description = "An evidence-based AI with expandable personal knowledge"
+requires-python = ">=3.12"
+dependencies = [
+    "psycopg[binary]>=3.2"
+]
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+charliesynth = "charliesynth.interface.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
