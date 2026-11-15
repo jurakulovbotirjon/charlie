@@ -12,7 +12,7 @@ def load_text_file(path: str | Path) -> str:
     if file_path.suffix.lower() != ".txt":
         raise ValueError("Only .txt files are supported.")
 
-    return file_path.read_text(encoding="utf-8")
+    return file_path.read_text(encoding="utf-8").replace("\x00", "")
 
 
 def load_pdf_pages(path: str | Path) -> list[dict]:
@@ -29,6 +29,7 @@ def load_pdf_pages(path: str | Path) -> list[dict]:
 
     for page_number, page in enumerate(reader.pages, start=1):
         content = page.extract_text() or ""
+        content = content.replace("\x00", "")
 
         if content.strip():
             pages.append({
@@ -53,7 +54,7 @@ def split_into_chunks(
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("Invalid overlap.")
 
-    text = text.strip()
+    text = text.replace("\x00", "").strip()
 
     if not text:
         return []

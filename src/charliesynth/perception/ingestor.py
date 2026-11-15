@@ -6,7 +6,9 @@ from pathlib import Path
 from charliesynth.memory.repository import MemoryRepository
 from charliesynth.perception.text_loader import (
     load_text_file,
+    load_pdf_pages,
     split_into_chunks,
+    split_pages_into_chunks,
 )
 
 
@@ -22,10 +24,30 @@ class DocumentIngestor:
         if not source.is_file():
             raise FileNotFoundError(source)
 
-        content = load_text_file(source)
+        extension = source.suffix.lower()
 
-        if not content.strip():
-            raise ValueError("Document is empty.")
+        if extension == ".pdf":
+            pages = load_pdf_pages(source)
+            chunks = split_pages_into_chunks(pages)
+            file_type = "pdf"
+
+        elif extension == ".txt":
+            content = load_text_file(source)
+
+            if not content.strip():
+                raise ValueError("Document is empty.")
+
+            chunks = [
+                {
+                    "content": chunk,
+                    "page_number": None,
+                }
+                for chunk in split_into_chunks(content)
+            ]
+            file_type = "txt"
+
+        else:
+            raise ValueError("Only PDF and TXT files are supported.")
 
         file_hash = hashlib.sha256(
             source.read_bytes()
@@ -40,14 +62,12 @@ class DocumentIngestor:
                 "filename": existing["filename"],
             }
 
-        stored_path = self.originals / f"{file_hash}.txt"
+        stored_path = self.originals / f"{file_hash}{extension}"
         shutil.copy2(source, stored_path)
-
-        chunks = split_into_chunks(content)
 
         document_id = self.repository.add_document(
             filename=source.name,
-            file_type="txt",
+            file_type=file_type,
             file_hash=file_hash,
             storage_path=str(stored_path),
         )
@@ -56,76 +76,14 @@ class DocumentIngestor:
             self.repository.add_chunk(
                 document_id=document_id,
                 chunk_index=index,
-                content=chunk,
+                content=chunk["content"],
+                page_number=chunk["page_number"],
             )
 
         return {
             "status": "ingested",
             "document_id": str(document_id),
             "filename": source.name,
+            "pages_extracted": len(pages) if extension == ".pdf" else None,
             "chunks_saved": len(chunks),
-        }
-
-
-import hashlib
-import shutil
-from pathlib import Path
-
-from charliesynth.memory.repository import MemoryRepository
-from charliesynth.perception.text_loader import (
-    load_text_file,
-    split_into_chunks,
-)
-
-
-class DocumentIngestor:
-    def __init__(self):
-        self.repository = MemoryRepository()
-        self.originals = Path("data/originals")
-        self.originals.mkdir(parents=True, exist_ok=True)
-
-    def ingest(self, source: str | Path):
-        source = Path(source)
-
-        if not source.is_file():
-            raise FileNotFoundError(source)
-
-        content = load_text_file(source)
-
-        if not content.strip():
-            raise ValueError("Document is empty.")
-
-        file_hash = hashlib.sha256(source.read_bytes()).hexdigest()
-
-        # Avoid registering the same file twice.
-        for document in self.repository.list_documents():
-            if document["id"] and document["filename"] == source.name:
-                pass
-
-        stored_path = self.originals / f"{file_hash}.txt"
-
-        if not stored_path.exists():
-            shutil.copy2(source, stored_path)
-
-        document_id = self.repository.add_document(
-            filename=source.name,
-            file_type="txt",
-            file_hash=file_hash,
-            storage_path=str(stored_path),
-        )
-
-        chunks = split_into_chunks(content)
-
-        for index, chunk in enumerate(chunks):
-            self.repository.add_chunk(
-                document_id=document_id,
-                chunk_index=index,
-                content=chunk,
-            )
-
-        return {
-            "document_id": str(document_id),
-            "filename": source.name,
-            "chunks_saved": len(chunks),
-            "storage_path": str(stored_path),
         }
