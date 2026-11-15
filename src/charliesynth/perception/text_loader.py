@@ -1,18 +1,45 @@
 
 from pathlib import Path
+from pypdf import PdfReader
 
 
 def load_text_file(path: str | Path) -> str:
-    """Read a UTF-8 text document."""
     file_path = Path(path)
 
     if not file_path.exists():
         raise FileNotFoundError(file_path)
 
     if file_path.suffix.lower() != ".txt":
-        raise ValueError("Only .txt files are supported currently.")
+        raise ValueError("Only .txt files are supported.")
 
     return file_path.read_text(encoding="utf-8")
+
+
+def load_pdf_pages(path: str | Path) -> list[dict]:
+    file_path = Path(path)
+
+    if not file_path.exists():
+        raise FileNotFoundError(file_path)
+
+    if file_path.suffix.lower() != ".pdf":
+        raise ValueError("Only .pdf files are supported.")
+
+    reader = PdfReader(str(file_path))
+    pages = []
+
+    for page_number, page in enumerate(reader.pages, start=1):
+        content = page.extract_text() or ""
+
+        if content.strip():
+            pages.append({
+                "page_number": page_number,
+                "content": content.strip(),
+            })
+
+    if not pages:
+        raise ValueError("No extractable text found in this PDF.")
+
+    return pages
 
 
 def split_into_chunks(
@@ -20,13 +47,11 @@ def split_into_chunks(
     chunk_size: int = 1000,
     overlap: int = 150,
 ) -> list[str]:
-    """Split text into overlapping chunks."""
-
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive.")
 
     if overlap < 0 or overlap >= chunk_size:
-        raise ValueError("overlap must be between 0 and chunk_size.")
+        raise ValueError("Invalid overlap.")
 
     text = text.strip()
 
@@ -47,5 +72,28 @@ def split_into_chunks(
             break
 
         start = end - overlap
+
+    return chunks
+
+
+def split_pages_into_chunks(
+    pages: list[dict],
+    chunk_size: int = 1000,
+    overlap: int = 150,
+) -> list[dict]:
+    chunks = []
+
+    for page in pages:
+        page_chunks = split_into_chunks(
+            page["content"],
+            chunk_size,
+            overlap,
+        )
+
+        for chunk in page_chunks:
+            chunks.append({
+                "content": chunk,
+                "page_number": page["page_number"],
+            })
 
     return chunks

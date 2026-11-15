@@ -12,7 +12,13 @@ src/charliesynth/core/brain.py
 src/charliesynth/interface/__init__.py
 src/charliesynth/interface/cli.py
 src/charliesynth/memory/__init__.py
+src/charliesynth/memory/database.py
+src/charliesynth/memory/repository.py
 src/charliesynth/perception/__init__.py
+src/charliesynth/perception/ingestor.py
+src/charliesynth/perception/text_loader.py
 src/charliesynth/reasoning/__init__.py
 src/charliesynth/research/__init__.py
 tests/test_brain.py
+tests/test_ingestion.py
+tests/test_repository.py
