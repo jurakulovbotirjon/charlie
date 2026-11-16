@@ -17,24 +17,43 @@ class CharlieSynth:
             "state": self.state,
         }
 
-    def answer(self, question: str) -> str:
+    def answer_structured(self, question: str) -> dict:
         if not question or not question.strip():
-            return "Please ask me something."
+            return {
+                "status": "unknown",
+                "answer": "Please ask me something.",
+                "results": [],
+            }
 
         result = self.evidence_engine.answer(question)
 
-        if result["status"] == "unknown":
+        return {
+            "status": result["status"],
+            "answer": result["answer"],
+            "results": [
+                {
+                    "filename": source["filename"],
+                    "page_number": source["page_number"],
+                    "content": "\n".join(source["evidence"]),
+                    "score": source["score"],
+                }
+                for source in result["sources"]
+            ],
+        }
+
+    def answer(self, question: str) -> str:
+        result = self.answer_structured(question)
+
+        if not result["results"]:
             return result["answer"]
 
         output = [result["answer"]]
 
-        for source in result["sources"]:
+        for source in result["results"]:
             page = source["page_number"] or "Unknown"
             output.append(
                 f"\nSource: {source['filename']} | Page: {page}"
             )
-
-            for sentence in source["evidence"]:
-                output.append(f"  - {sentence}")
+            output.append(source["content"])
 
         return "\n".join(output)

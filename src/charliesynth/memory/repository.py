@@ -7,35 +7,59 @@ from charliesynth.memory.database import get_connection
 class MemoryRepository:
 
     
+    
     def search_chunks(self, question: str, limit: int = 5) -> list[dict]:
-        """Retrieve relevant passages using PostgreSQL full-text search."""
-
-        if not question.strip():
+        """Retrieve relevant passages while filtering obvious PDF noise."""
+    
+        if not question or not question.strip():
             return []
-
+    
         query = """
-            SELECT
-                kc.id,
-                d.filename,
-                kc.content,
-                kc.page_number,
-                ts_rank(
-                    to_tsvector('english', kc.content),
-                    plainto_tsquery('english', %s)
-                ) AS relevance
-            FROM knowledge_chunks kc
-            JOIN documents d ON d.id = kc.document_id
-            WHERE to_tsvector('english', kc.content)
-                  @@ plainto_tsquery('english', %s)
+            WITH candidates AS (
+                SELECT
+                    kc.id,
+                    d.filename,
+                    kc.content,
+                    kc.page_number,
+                    ts_rank_cd(
+                        to_tsvector('english', kc.content),
+                        plainto_tsquery('english', %s)
+                    ) AS relevance
+                FROM knowledge_chunks kc
+                JOIN documents d ON d.id = kc.document_id
+                WHERE
+                    to_tsvector('english', kc.content)
+                    @@ plainto_tsquery('english', %s)
+    
+                    -- Reject very short fragments
+                    AND length(trim(kc.content)) >= 180
+    
+                    -- Reject obvious table-of-contents headings
+                    AND kc.content !~* '(^|\\n)\\s*(table of contents|contents)\\s*(\\n|$)'
+    
+                    -- Reject chunks dominated by numbered section listings
+                    AND (
+                        length(kc.content)
+                        - length(regexp_replace(
+                            kc.content,
+                            '(\\n|^)[[:space:]]*[0-9]+(\\.[0-9]+)*[[:space:]]+[^\\n]+',
+                            '',
+                            'g'
+                        ))
+                    ) < length(kc.content) * 0.65
+            )
+            SELECT *
+            FROM candidates
+            WHERE relevance > 0
             ORDER BY relevance DESC
             LIMIT %s;
         """
-
+    
         with get_connection() as connection:
             with connection.cursor() as cursor:
                 cursor.execute(query, (question, question, limit))
                 rows = cursor.fetchall()
-
+    
         return [
             {
                 "chunk_id": row[0],
@@ -46,7 +70,7 @@ class MemoryRepository:
             }
             for row in rows
         ]
-    
+
     def get_document_by_hash(self, file_hash: str):
         """Find an already registered document by SHA-256 hash."""
 

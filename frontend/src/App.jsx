@@ -71,54 +71,54 @@ export default function App() {
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  async function sendMessage(event) {
-    event.preventDefault();
+  
+async function sendMessage(event) {
+  event.preventDefault();
 
-    const text = question.trim();
-    if (!text || loading) return;
+  const text = question.trim();
+  if (!text || loading) return;
 
-    setError("");
-    setQuestion("");
+  setError("");
+  setQuestion("");
+  setMessages((previous) => [
+    ...previous,
+    { role: "user", content: text },
+  ]);
+  setLoading(true);
+
+  try {
+    const response = await fetch(`${API}/api/ask`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: text }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "The request failed.");
+    }
+
     setMessages((previous) => [
       ...previous,
-      { role: "user", content: text },
+      {
+        role: "assistant",
+        content: data.answer,
+        results: data.results || [],
+      },
     ]);
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API}/api/search`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: text }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || "The request failed.");
-      }
-
-      setMessages((previous) => [
-  ...previous,
-  {
-    role: "assistant",
-    content: data.results?.length
-      ? "I found some relevant passages in your knowledge library."
-      : "I couldn't find supporting information in your library.",
-    results: data.results || [],
-  },
-]);
-    } catch (err) {
-      setMessages((previous) => [
-        ...previous,
-        {
-          role: "assistant",
-          content: `I couldn't reach my reasoning system. ${err.message}`,
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+  } catch (err) {
+    setMessages((previous) => [
+      ...previous,
+      {
+        role: "assistant",
+        content: `I couldn't reach my reasoning system. ${err.message}`,
+      },
+    ]);
+  } finally {
+    setLoading(false);
   }
+}
 
   async function uploadDocument(event) {
     const file = event.target.files?.[0];
@@ -162,13 +162,12 @@ export default function App() {
     <div className="app-shell">
       <aside className={`sidebar ${sidebarOpen ? "" : "sidebar-closed"}`}>
         <div className="brand">
-          <div className="brand-mark">
-            <BrainCircuit size={25} />
-          </div>
-          <div className="brand-copy">
-            <strong>CHARLIESYNTH</strong>
-            <span>PERSONAL INTELLIGENCE</span>
-          </div>
+          <img
+            className="brand-logo"
+            src="/charliesynth-logo.png"
+            alt="CharlieSynth"
+          />
+
           <button
             className="icon-button sidebar-toggle"
             onClick={() => setSidebarOpen(false)}
@@ -290,13 +289,19 @@ export default function App() {
             {messages.length === 0 ? (
               <div className="welcome-screen">
                 <div className="orb-wrap">
-                  <div className="orb-glow" />
-                  <div className="orb">
-                    <BrainCircuit size={42} />
-                  </div>
-                  <Sparkles className="orb-sparkle sparkle-one" size={18} />
-                  <Sparkles className="orb-sparkle sparkle-two" size={13} />
-                </div>
+  <div className="orb-glow" />
+
+  <div className="orb">
+    <img
+      src="/charliesynth-logo.png"
+      alt="CharlieSynth"
+      className="orb-logo"
+    />
+  </div>
+
+  <Sparkles className="orb-sparkle sparkle-one" size={18} />
+  <Sparkles className="orb-sparkle sparkle-two" size={13} />
+</div>
 
                 <div className="welcome-eyebrow">
                   <span className="eyebrow-line" />

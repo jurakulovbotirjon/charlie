@@ -52,9 +52,7 @@ def ask(data: Question):
             detail="Question cannot be empty.",
         )
 
-    return {
-        "answer": brain.answer(data.question)
-    }
+    return brain.answer_structured(data.question)
 
 
 @app.post("/api/search")
